@@ -1,0 +1,17 @@
+#!/usr/bin/env python
+
+from gi.repository import PackageKitGlib as pk
+
+def bla(a, b, c):
+	pass
+
+
+def main():
+	client = pk.Client()
+	updates = client.get_updates(0,None,bla,None )
+	package_sack = updates.get_package_sack()
+	package_array = package_sack.get_array()
+	print "There are "+ str(len(package_array)) + " package updates"
+
+main()
+
