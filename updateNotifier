@@ -25,5 +25,6 @@ def main():
 
 	GLib.timeout_add_seconds(30,check_for_updates)
 	Gtk.main()
-main()
+if __name__ == "__main__":
+	main()
 
