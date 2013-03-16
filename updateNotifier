@@ -1,31 +1,81 @@
 #!/usr/bin/env python
 
+from gi.repository import Gtk, GLib, Notify
 from gi.repository import PackageKitGlib as pk
-from gi.repository import Gtk,GLib
 import signal
-
-def check_for_updates():
-    client = pk.Client()
-    updates = client.get_updates(0,None,bla,None )
-    package_sack = updates.get_package_sack()
-    package_array = package_sack.get_array()
-    print "There are "+ str(len(package_array)) + " package updates"
-    return True
-
-def bla(a, b, c):
-    pass
+from threading import Lock
 
 
-def main():
-    signal.signal(signal.SIGINT, signal.SIG_DFL)
+class UpdateNotifier:
+    def check_progress_cb(self, progress, progress_type, data):
+        pass
 
-    statusicon = Gtk.StatusIcon()
-    statusicon.set_from_stock(Gtk.STOCK_HOME)
-    statusicon.connect("popup-menu", lambda a,b,c: Gtk.main_quit())
+    def _check_for_updates(self,data):
+        client = pk.Client()
+        updates = client.get_updates(0, None, self.check_progress_cb, None)
+        package_sack = updates.get_package_sack()
+        package_array = package_sack.get_array()
+        if not package_array:
+            self.status_icon_image = Gtk.STOCK_HOME
+            self.available_updates = 0
+        else:
+            self.status_icon_image = Gtk.STOCK_DIALOG_INFO
+            updates = len(package_array)
+            if self.available_updates < updates:
+                self.available_updates = updates
+                self.notify_new_updates()
+        
+        self.statusicon.set_from_stock(self.status_icon_image)
+        return True
 
-    GLib.timeout_add_seconds(30,check_for_updates)
-    Gtk.main()
+    def check_updates_locked(self, data):
+        if not self.check_lock.acquire(False):
+            pass
+        else:
+            try:
+                self._check_for_updates(data)
+            finally:
+                self.check_lock.release() 
+
+    def notify_new_updates(self):
+        notification = Notify.Notification.new("New updates available", 
+                    str(self.available_updates) + " updates are available",
+                    'dialog-information')
+        notification.show()
+
+
+
+    def show_popup(self, icon, button, time):
+        self.menu = Gtk.Menu()
+
+        quit = Gtk.MenuItem()
+        quit.set_label("Quit")
+        quit.connect('activate', lambda q: Gtk.main_quit())
+        
+        check = Gtk.MenuItem()
+        check.set_label("Check for updates")
+        check.connect('activate', self.check_updates_locked)
+
+        self.menu.append(check)
+        self.menu.append(quit)
+        self.menu.show_all()
+        self.menu.popup(None, None, icon.position_menu, icon,  button, time)
+
+    def __init__(self):
+        self.status_icon_image = Gtk.STOCK_HOME
+        self.available_updates = 0
+        self.timeout = 300
+        self.check_lock = Lock()
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+        Notify.init('updateTray')
+
+        self.statusicon = Gtk.StatusIcon()
+        self.statusicon.set_from_stock(self.status_icon_image)
+        self.statusicon.connect('popup-menu', self.show_popup) 
+
+        GLib.timeout_add_seconds(self.timeout, self.check_updates_locked, None)
 
 if __name__ == "__main__":
-    main()
+    UpdateNotifier() 
+    Gtk.main()
 
