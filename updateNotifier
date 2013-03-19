@@ -16,16 +16,16 @@ class UpdateNotifier:
         package_sack = updates.get_package_sack()
         package_array = package_sack.get_array()
         if not package_array:
-            self.status_icon_image = Gtk.STOCK_HOME
+            self.status_icon_name = 'updates_inactive'
             self.available_updates = 0
         else:
-            self.status_icon_image = Gtk.STOCK_DIALOG_INFO
+            self.status_icon_name = 'updates_active'
             updates = len(package_array)
             if self.available_updates < updates:
                 self.available_updates = updates
                 self.notify_new_updates()
         
-        self.statusicon.set_from_stock(self.status_icon_image)
+        self.statusicon.set_from_icon_name(self.status_icon_name)
         return True
 
     def check_updates_locked(self, data):
@@ -62,7 +62,7 @@ class UpdateNotifier:
         self.menu.popup(None, None, icon.position_menu, icon,  button, time)
 
     def __init__(self):
-        self.status_icon_image = Gtk.STOCK_HOME
+        self.status_icon_name = 'updates_inactive'
         self.available_updates = 0
         self.timeout = 300
         self.check_lock = Lock()
@@ -70,7 +70,7 @@ class UpdateNotifier:
         Notify.init('updateTray')
 
         self.statusicon = Gtk.StatusIcon()
-        self.statusicon.set_from_stock(self.status_icon_image)
+        self.statusicon.set_from_icon_name(self.status_icon_name)
         self.statusicon.connect('popup-menu', self.show_popup) 
 
         GLib.timeout_add_seconds(self.timeout, self.check_updates_locked, None)
